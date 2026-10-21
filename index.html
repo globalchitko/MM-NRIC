@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NRC Data Checker & Validator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #cbd5e1;
+            --primary: #2563eb;
+            --badge-bg: #800000;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 750px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            padding: 40px;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .header {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h2 {
+            font-size: 1.75rem;
+            color: #0f172a;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #1e3a8a;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .required-star {
+            color: #dc2626;
+            margin-left: 4px;
+        }
+
+        /* NRIC Segment Row Styling matching image */
+        .nrc-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .nrc-select, .nrc-input {
+            padding: 12px 14px;
+            font-size: 1rem;
+            border: 1.5px solid var(--border-color);
+            border-radius: 8px;
+            background-color: #ffffff;
+            color: var(--text-main);
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .nrc-select:focus, .nrc-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        }
+
+        /* Specific input width sizing */
+        #nrc_state {
+            width: 90px;
+            background-color: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+
+        #nrc_township {
+            flex: 1;
+            min-width: 160px;
+            background-color: #ffffff;
+        }
+
+        #nrc_type {
+            width: 95px;
+            background-color: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+
+        #nrc_number {
+            width: 135px;
+            background-color: #fef9c3;
+            border-color: #fde047;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        /* Red Burmese Location Badge matching your visual layout */
+        .nrc-preview-badge {
+            display: none;
+            margin-top: 10px;
+            padding: 6px 14px;
+            background-color: var(--badge-bg);
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 6px;
+            width: fit-content;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 6px -1px rgba(128, 0, 0, 0.2);
+            animation: fadeIn 0.25s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .info-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+            display: none;
+        }
+
+        .info-card h4 {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+        }
+
+        .info-item span {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 3px;
+        }
+
+        .info-item strong {
+            font-size: 0.95rem;
+            color: #0f172a;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h2>NRC Verification Checker</h2>
+            <p>Interactive National Registration Identity Card validator with live Burmese translation preview.</p>
+        </div>
+
+        <div class="form-group">
+            <label>National Registration Identity Card (NRIC) <span class="required-star">*</span></label>
+            
+            <div class="nrc-container">
+                <!-- State Selection -->
+                <select id="nrc_state" class="nrc-select">
+                    <option value="">State</option>
+                    <script>
+                        for(let i=1; i<=14; i++) {
+                            document.write(`<option value="${i}/">${i}/</option>`);
+                        }
+                    </script>
+                </select>
+
+                <!-- Township Input with Datalist -->
+                <input type="text" id="nrc_township" class="nrc-input" placeholder="Township Code (e.g. MAM)" list="township-list">
+                <datalist id="township-list"></datalist>
+
+                <!-- Card Type Selection -->
+                <select id="nrc_type" class="nrc-select">
+                    <option value="(C)">(C)</option>
+                    <option value="(N)" selected>(N)</option>
+                    <option value="(P)">(P)</option>
+                    <option value="(E)">(E)</option>
+                </select>
+
+                <!-- 6-Digit Serial Number -->
+                <input type="text" id="nrc_number" class="nrc-input" placeholder="6-Digits" maxlength="6">
+            </div>
+
+            <!-- Burmese District/Township Live Badge -->
+            <div id="nrc_preview_badge" class="nrc-preview-badge"></div>
+        </div>
+
+        <!-- Detailed Breakdown Result Card -->
+        <div class="info-card" id="infoCard">
+            <h4>Parsed Location Data</h4>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span>State / Region:</span>
+                    <strong id="resState">-</strong>
+                </div>
+                <div class="info-item">
+                    <span>District Name:</span>
+                    <strong id="resDistrict">-</strong>
+                </div>
+                <div class="info-item">
+                    <span>Township Name:</span>
+                    <strong id="resTownship">-</strong>
+                </div>
+                <div class="info-item">
+                    <span>Full Formatted NRIC:</span>
+                    <strong id="resFull">-</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Burmese State Names Translation Map
+        const stateNamesMM = {
+            "1/": "ကချင်ပြည်နယ်", "2/": "ကယားပြည်နယ်", "3/": "ကရင်ပြည်နယ်", 
+            "4/": "ချင်းပြည်နယ်", "5/": "စစ်ကိုင်းတိုင်းဒေသကြီး", "6/": "တနင်္သာရီတိုင်းဒေသကြီး", 
+            "7/": "ပဲခူးတိုင်းဒေသကြီး", "8/": "မကွေးတိုင်းဒေသကြီး", "9/": "မန္တလေးတိုင်းဒေသကြီး", 
+            "10/": "မွန်ပြည်နယ်", "11/": "ရခိုင်ပြည်နယ်", "12/": "ရန်ကုန်တိုင်းဒေသကြီး", 
+            "13/": "ရှမ်းပြည်နယ်", "14/": "ဧရာဝတီတိုင်းဒေသကြီး"
+        };
+
+        // Complete Official NRC Township Datasets covering all states and regions
+        const nrcTownshipsData = {
+            "1/": [
+                { code: "MKA", district: "မြစ်ကြီးနား", township: "မြစ်ကြီးနား" },
+                { code: "SNO", district: "မြစ်ကြီးနား", township: "ဆင်ဘို" },
+                { code: "WMW", district: "မြစ်ကြီးနား", township: "ဝိုင်းမော်" },
+                { code: "SDN", district: "မြစ်ကြီးနား", township: "ဆဒုံး" },
+                { code: "KPTE", district: "မြစ်ကြီးနား", township: "ကန်ပိုက်တီး" },
+                { code: "IGN", district: "မြစ်ကြီးနား", township: "အင်ဂျန်းယန်" },
+                { code: "TNI", district: "မြစ်ကြီးနား", township: "တနိုင်း" },
+                { code: "SBY", district: "မြစ်ကြီးနား", township: "ရှင်ဗွေယန်" },
+                { code: "CBE", district: "မြစ်ကြီးနား", township: "ချီဖွေ" },
+                { code: "PWAA", district: "မြစ်ကြီးနား", township: "ပန်ဝါ" },
+                { code: "SLK", district: "မြစ်ကြီးနား", township: "ဆော့လော်" },
+                { code: "MNN", district: "မိုးညှင်း", township: "မိုးညှင်း" },
+                { code: "HPN", district: "မိုးညှင်း", township: "ဟိုပင်" },
+                { code: "MGG", district: "မိုးညှင်း", township: "မိုးကောင်း" },
+                { code: "PKT", district: "မိုးညှင်း", township: "ဖားကန့်" },
+                { code: "KMG", district: "မိုးညှင်း", township: "ကာမိုင်း" },
+                { code: "BMO", district: "ဗန်းမော်", township: "ဗန်းမော်" },
+                { code: "SGU", district: "ဗန်းမော်", township: "ရွှေကူ" },
+                { code: "MOA", district: "ဗန်းမော်", township: "မြို့လှ" },
+                { code: "MMUK", district: "ဗန်းမော်", township: "မိုးမောက်" },
+                { code: "LGE", district: "ဗန်းမော်", township: "လွယ်ဂျယ်" },
+                { code: "DPY", district: "ဗန်းမော်", township: "ဒေါ့ဖုန်းယန်" },
+                { code: "MSI", district: "ဗန်းမော်", township: "မန်စီ" },
+                { code: "PTO", district: "ပူတာအို", township: "ပူတာအို" },
+                { code: "MCBW", district: "ပူတာအို", township: "မချမ်းဘော" },
+                { code: "NMG", district: "ပူတာအို", township: "နောင်မွန်း" },
+                { code: "PND", district: "ပူတာအို", township: "ပန်နန်းဒင်" },
+                { code: "LBL", district: "ပူတာအို", township: "ခေါင်လန်ဖူး" },
+                { code: "SBN", district: "ပူတာအို", township: "ဆွမ်ပရာဘွမ်" }
+            ],
+            "2/": [
+                { code: "LKW", district: "လွိုင်ကော်", township: "လွိုင်ကော်" },
+                { code: "DMO", district: "လွိုင်ကော်", township: "ဒီမောဆိုး" },
+                { code: "HSO", district: "လွိုင်ကော်", township: "ဖရူဆိုး" },
+                { code: "STW", district: "လွိုင်ကော်", township: "ရှားတော" },
+                { code: "BKE", district: "ဘော်လခဲ", township: "ဘော်လခဲ" },
+                { code: "YTT", district: "ဘော်လခဲ", township: "ရွာသစ်" },
+                { code: "PSG", district: "ဘော်လခဲ", township: "ဖားဆောင်း" },
+                { code: "MSN", district: "ဘော်လခဲ", township: "မယ်စဲ့" }
+            ],
+            "3/": [
+                { code: "PAN", district: "ဘားအံ", township: "ဘားအံ" },
+                { code: "HBE", district: "ဘားအံ", township: "လှိုင်းဘွဲ့" },
+                { code: "PKL", district: "ဘားအံ", township: "ပိုင်ကျုံး" },
+                { code: "SYT", district: "ဘားအံ", township: "ရှမ်းရွာသစ်" },
+                { code: "TTG", district: "ဘားအံ", township: "သံတောင်ကြီး" },
+                { code: "LTO", district: "ဘားအံ", township: "လိပ်သို" },
+                { code: "BGI", district: "ဘားအံ", township: "ဘောဂလိ" },
+                { code: "PUN", district: "ဖာပွန်", township: "ဖာပွန်" },
+                { code: "KMM", district: "ဖာပွန်", township: "ကမမောင်း" },
+                { code: "KKK", district: "ကော့ကရိတ်", township: "ကော့ကရိတ်" },
+                { code: "KIN", district: "ကော့ကရိတ်", township: "ကြာအင်းဆိပ်ကြီး" },
+                { code: "KDN", district: "ကော့ကရိတ်", township: "ကျိုက်ဒုံ" },
+                { code: "HTZ", district: "ကော့ကရိတ်", township: "ဘုရားသုံးဆူ" },
+                { code: "MWI", district: "မြဝတီ", township: "မြဝတီ" },
+                { code: "SKL", district: "မြဝတီ", township: "စုကလိ" },
+                { code: "WLM", district: "မြဝတီ", township: "ဝေါလေမြိုင်" }
+            ],
+            "4/": [
+                { code: "HKA", district: "ဖလမ်း", township: "ဟားခါး" },
+                { code: "FLM", district: "ဖလမ်း", township: "ဖလမ်း" },
+                { code: "RKD", district: "ဖလမ်း", township: "ရိခေါ်ဒါရ်" },
+                { code: "HTLM", district: "ဖလမ်း", township: "ထန်တလန်" },
+                { code: "TDM", district: "ဖလမ်း", township: "တီတိန်" },
+                { code: "TZN", district: "ဖလမ်း", township: "တွန်းဇံ" },
+                { code: "KKR", district: "ဖလမ်း", township: "ကျီခါး" },
+                { code: "MDT", district: "မင်းတပ်", township: "မင်းတပ်" },
+                { code: "MTI", district: "မင်းတပ်", township: "မတူပီ" },
+                { code: "YZR", district: "မင်းတပ်", township: "ရေဇွာ" },
+                { code: "KPT", district: "မင်းတပ်", township: "ကန်ပက်လက်" },
+                { code: "PWA", district: "မင်းတပ်", township: "ပလက်ဝ" }
+            ],
+            "5/": [
+                { code: "SGG", district: "စစ်ကိုင်း", township: "စစ်ကိုင်း" },
+                { code: "MMU", district: "စစ်ကိုင်း", township: "ချောင်းဦး" },
+                { code: "MUG", district: "စစ်ကိုင်း", township: "မြောင်" },
+                { code: "SBO", district: "ရွှေဘို", township: "ရွှေဘို" },
+                { code: "KMY", district: "ရွှေဘို", township: "ကျောက်မြောင်း" },
+                { code: "WLT", district: "ရွှေဘို", township: "ဝက်လက်" },
+                { code: "KNU", district: "ရွှေဘို", township: "ခင်ဦး" },
+                { code: "KBU", district: "ကန့်ဘလူ", township: "ကန့်ဘလူ" },
+                { code: "KHA", district: "ကန့်ဘလူ", township: "ကျွန်းလှ" },
+                { code: "YEU", district: "ရွှေဘို", township: "ရေဦး" },
+                { code: "DPN", district: "ရွှေဘို", township: "ဒီပဲယင်း" },
+                { code: "TZE", district: "ရွှေဘို", township: "တန့်ဆည်" },
+                { code: "MWA", district: "မုံရွာ", township: "မုံရွာ" },
+                { code: "CHU", district: "မုံရွာ", township: "ချောင်းဦး" },
+                { code: "AYW", district: "မုံရွာ", township: "အရာတော်" },
+                { code: "BDN", district: "မုံရွာ", township: "ဘုတလင်" },
+                { code: "KNI", district: "မုံရွာ", township: "ကနီ" },
+                { code: "PLE", district: "မုံရွာ", township: "ပုလဲ" },
+                { code: "YMBN", district: "မုံရွာ", township: "ယင်းမာပင်" },
+                { code: "SLI", district: "မုံရွာ", township: "ဆာလင်းကြီး" },
+                { code: "KTA", district: "ကသာ", township: "ကသာ" },
+                { code: "HGG", district: "ကသာ", township: "ထီးချိုင့်" },
+                { code: "IDW", district: "ကသာ", township: "အင်းတော်" },
+                { code: "BMK", district: "ကသာ", township: "ဗန်းမော်" },
+                { code: "KLN", district: "ကသာ", township: "ကောလင်း" },
+                { code: "WTO", district: "ကသာ", township: "ဝန်းသို" },
+                { code: "PLU", district: "ကသာ", township: "ပင်လယ်ဘူး" },
+                { code: "KLO", district: "ကလေး", township: "ကလေး" },
+                { code: "KLA", district: "ကလေး", township: "ကလေးဝ" },
+                { code: "MKN", district: "ကလေး", township: "မင်းကင်း" },
+                { code: "TMU", district: "တမူး", township: "တမူး" },
+                { code: "KPK", district: "တမူး", township: "ခမ်းပတ်" },
+                { code: "MOT", district: "တမူး", township: "မြို့သစ်" },
+                { code: "MLK", district: "မော်လိုက်", township: "မော်လိုက်" },
+                { code: "PBN", district: "မော်လိုက်", township: "ဖောင်းပြင်" },
+                { code: "HMN", district: "ခန္တီး", township: "ဟုမ္မလင်း" },
+                { code: "LSE", district: "ခန္တီး", township: "လေရှီး" }
+            ],
+            "6/": [
+                { code: "TVY", district: "ထားဝယ်", township: "ထားဝယ်" },
+                { code: "MIT", district: "ထားဝယ်", township: "မေတ္တာ" },
+                { code: "LIN", district: "ထားဝယ်", township: "လောင်းလုံ" },
+                { code: "TYG", district: "ထားဝယ်", township: "သရက်ချောင်း" },
+                { code: "YBU", district: "ထားဝယ်", township: "ရေဖြူ" },
+                { code: "KLA", district: "ထားဝယ်", township: "ကလိန်အောင်" },
+                { code: "MYK", district: "မြိတ်", township: "မြိတ်" },
+                { code: "KSE", district: "မြိတ်", township: "ကျွန်းစု" },
+                { code: "PLW", district: "မြိတ်", township: "ပုလော" },
+                { code: "PLK", district: "မြိတ်", township: "ပလောက်" },
+                { code: "TNM", district: "မြိတ်", township: "တနင်္သာရီ" },
+                { code: "KTHG", district: "ကော့သောင်း", township: "ကော့သောင်း" },
+                { code: "KMI", district: "ကော့သောင်း", township: "ခမောက်ကြီး" },
+                { code: "BPN", district: "ကော့သောင်း", township: "ဘုတ်ပြင်း" }
+            ],
+            "7/": [
+                { code: "YDE", district: "တောင်ငူ", township: "ရေတာရှည်" },
+                { code: "TGO", district: "တောင်ငူ", township: "တောင်ငူ" },
+                { code: "HTN", district: "တောင်ငူ", township: "ထန်းတပင်" },
+                { code: "OTN", district: "တောင်ငူ", township: "အုတ်တွင်း" },
+                { code: "PYU", district: "တောင်ငူ", township: "ဖြူး" },
+                { code: "KYI", district: "တောင်ငူ", township: "ကျောက်ကြီး" },
+                { code: "KTGA", district: "တောင်ငူ", township: "ကျောက်တံခါး" },
+                { code: "SGN", district: "တောင်ငူ", township: "ရွှေကျင်" },
+                { code: "NBN", district: "ညောင်လေးပင်", township: "ညောင်လေးပင်" },
+                { code: "DKU", district: "ညောင်လေးပင်", township: "ဒိုက်ဦး" },
+                { code: "WAW", district: "ပဲခူး", township: "ဝေါ" },
+                { code: "PGU", district: "ပဲခူး", township: "ပဲခူး" },
+                { code: "TPN", district: "ပဲခူး", township: "သနပ်ပင်" },
+                { code: "KWA", district: "ပဲခူး", township: "ကဝ" },
+                { code: "TRY", district: "သာယာဝတီ", township: "သာယာဝတီ" },
+                { code: "LPN", district: "သာယာဝတီ", township: "လက်ပံတန်း" },
+                { code: "MHA", district: "သာယာဝတီ", township: "မင်းလှ" },
+                { code: "MNO", district: "သာယာဝတီ", township: "မိုးညို" },
+                { code: "OPO", district: "သာယာဝတီ", township: "အုတ်ဖို" },
+                { code: "GBK", district: "သာယာဝတီ", township: "ကြို့ပင်ကောက်" },
+                { code: "ZGN", district: "သာယာဝတီ", township: "ဇီးကုန်း" },
+                { code: "NTN", district: "ပြည်", township: "နတ်တလင်း" },
+                { code: "PDE", district: "ပြည်", township: "ပေါင်းတည်" },
+                { code: "TGN", district: "ပြည်", township: "သဲကုန်း" },
+                { code: "SDG", district: "ပြည်", township: "ရွှေတောင်" },
+                { code: "PME", district: "ပြည်", township: "ပြည်" },
+                { code: "PDG", district: "ပြည်", township: "ပန်းတောင်း" },
+                { code: "PKHG", district: "ပြည်", township: "ပေါက်ခေါင်း" }
+            ],
+            "8/": [
+                { code: "MGE", district: "မကွေး", township: "မကွေး" },
+                { code: "YNG", district: "မကွေး", township: "ရေနံချောင်း" },
+                { code: "CHK", district: "မကွေး", township: "ချောက်" },
+                { code: "NMK", district: "မကွေး", township: "နတ်မောက်" },
+                { code: "MTT", district: "မကွေး", township: "မြို့သစ်" },
+                { code: "TDI", district: "မကွေး", township: "တောင်တွင်းကြီး" },
+                { code: "MBU", district: "မင်းဘူး", township: "မင်းဘူး(စကု)" },
+                { code: "PBU", district: "မင်းဘူး", township: "ပွင့်ဖြူ" },
+                { code: "SLN", district: "မင်းဘူး", township: "စလင်း" },
+                { code: "STRA", district: "မင်းဘူး", township: "စေတုတ္တရာ" },
+                { code: "TYI", district: "သရက်", township: "သရက်" },
+                { code: "ALN", district: "သရက်", township: "အောင်လံ" },
+                { code: "KMA", district: "သရက်", township: "ကံမ" },
+                { code: "MDE", district: "သရက်", township: "မင်းတုန်း" },
+                { code: "SBWE", district: "သရက်", township: "ဆင်ပေါင်ဝဲ" },
+                { code: "MLA", district: "သရက်", township: "မင်းလှ" },
+                { code: "PKU", district: "ပခုက္ကူ", township: "ပခုက္ကူ" },
+                { code: "YSO", district: "ပခုက္ကူ", township: "ရေစကြို" },
+                { code: "MYG", district: "ပခုက္ကူ", township: "မြိုင်မြို့" },
+                { code: "PAK", district: "ပခုက္ကူ", township: "ပေါက်မြို့" },
+                { code: "SPU", district: "ပခုက္ကူ", township: "ဆိပ်ဖြူ" },
+                { code: "GGW", district: "ဂန့်ဂေါ", township: "ဂန့်ဂေါ" },
+                { code: "SAW", district: "ဂန့်ဂေါ", township: "ဆော" },
+                { code: "KHT", district: "ဂန့်ဂေါ", township: "ကျောက်ထု" },
+                { code: "TLN", district: "ဂန့်ဂေါ", township: "ထီးလင်း" }
+            ],
+            "9/": [
+                { code: "AMT", district: "မန္တလေး", township: "အောင်မြေသာစံ" },
+                { code: "CAT", district: "မန္တလေး", township: "ချမ်းအေးသာစံ" },
+                { code: "CMT", district: "မန္တလေး", township: "ချမ်းမြသာစည်" },
+                { code: "MAM/MHAMY", district: "မန္တလေး", township: "မဟာအောင်မြေ" },
+                { code: "PKT", district: "မန္တလေး", township: "ပြည်ကြီးတံခွန်" },
+                { code: "AMA", district: "မန္တလေး", township: "အမရပူရ" },
+                { code: "PTI", district: "မန္တလေး", township: "ပုသိမ်ကြီး" },
+                { code: "POL", district: "ပြင်ဦးလွင်", township: "ပြင်ဦးလွင်(မေမြို့)" },
+                { code: "MDA", district: "ပြင်ဦးလွင်", township: "မတ္တရာ" },
+                { code: "SKU", district: "ပြင်ဦးလွင်", township: "စဉ်ကူး" },
+                { code: "TBKN", district: "ပြင်ဦးလွင်", township: "သပိတ်ကျင်း" },
+                { code: "TAG", district: "ပြင်ဦးလွင်", township: "တကောင်း" },
+                { code: "MGK", district: "ပြင်ဦးလွင်", township: "မိုးကုတ်" },
+                { code: "KSE", district: "ကျောက်ဆည်", township: "ကျောက်ဆည်" },
+                { code: "SKG", district: "ကျောက်ဆည်", township: "စဉ့်ကိုင်" },
+                { code: "MTA", district: "ကျောက်ဆည်", township: "မြစ်သား" },
+                { code: "TDU", district: "ကျောက်ဆည်", township: "တံတားဦး" },
+                { code: "MGN", district: "မြင်းခြံ", township: "မြင်းခြံ" },
+                { code: "TTA", district: "မြင်းခြံ", township: "တောင်သာ" },
+                { code: "KPG", district: "မြင်းခြံ", township: "ကျောက်ပန်းတောင်း" },
+                { code: "NTI", district: "မြင်းခြံ", township: "နွားထိုးကြီး" },
+                { code: "NZN", district: "မြင်းခြံ", township: "ငါန်းဇွန်း" },
+                { code: "NYU", district: "ညောင်ဦး", township: "ညောင်ဦး(ပုဂံ)" },
+                { code: "NTY", district: "ညောင်ဦး", township: "ငါ့သရောက်" },
+                { code: "MTLA", district: "မိတ္ထီလာ", township: "မိတ္ထီလာ" },
+                { code: "MHLG", district: "မိတ္ထီလာ", township: "မလှိုင်" },
+                { code: "TZI", district: "မိတ္ထီလာ", township: "သာစည်" },
+                { code: "WDN", district: "မိတ္ထီလာ", township: "ဝမ်းတွင်း" },
+                { code: "YMN", district: "ရမည်းသင်း", township: "ရမည်းသင်း" },
+                { code: "PBE", district: "ရမည်းသင်း", township: "ပျော်ဘွယ်" },
+                { code: "ZYT", district: "နေပြည်တော်", township: "ဇေယျာသီရိ" },
+                { code: "PBT", district: "နေပြည်တော်", township: "ပုဗ္ဗသီရိ" },
+                { code: "OTT", district: "နေပြည်တော်", township: "ဥတ္တရသီရိ" },
+                { code: "ZBT", district: "နေပြည်တော်", township: "ဗဗ္ဗူသီရိ" },
+                { code: "DKT", district: "နေပြည်တော်", township: "ဒက္ခိဏသီရိ" },
+                { code: "TAK", district: "နေပြည်တော်", township: "တပ်ကုန်း" },
+                { code: "PMA", district: "နေပြည်တော်", township: "ပျဉ်းမနား" },
+                { code: "LWE", district: "နေပြည်တော်", township: "လယ်ဝေး" }
+            ],
+            "10/": [
+                { code: "MME", district: "မော်လမြိုင်", township: "မော်လမြိုင်" },
+                { code: "KMW", district: "မော်လမြိုင်", township: "ကျိုက်မရော" },
+                { code: "CZN", district: "မော်လမြိုင်", township: "ချောင်းဆုံ" },
+                { code: "TPZT", district: "မော်လမြိုင်", township: "သံဖြူဇရပ်" },
+                { code: "MDN", district: "မော်လမြိုင်", township: "မုဒုံ" },
+                { code: "YE", district: "မော်လမြိုင်", township: "ရေးမြို့" },
+                { code: "LMI", district: "မော်လမြိုင်", township: "လမိုင်း" },
+                { code: "KZA", district: "မော်လမြိုင်", township: "ခေါဇာ" },
+                { code: "TTN", district: "သထုံ", township: "သထုံ" },
+                { code: "PAG", district: "သထုံ", township: "ပေါင်" },
+                { code: "KTO", district: "သထုံ", township: "ကျိုက်ထို" },
+                { code: "BLN", district: "သထုံ", township: "ဘီးလင်း" }
+            ],
+            "11/": [
+                { code: "AKB", district: "စစ်တွေ", township: "စစ်တွေ" },
+                { code: "RTG", district: "စစ်တွေ", township: "ရသေ့တောင်" },
+                { code: "PNGN", district: "စစ်တွေ", township: "ပုဏ္ဏားကျွန်း" },
+                { code: "KTW", district: "စစ်တွေ", township: "ကျောက်တော်" },
+                { code: "MHG", district: "မြောက်ဦး", township: "မြောက်ဦး" },
+                { code: "MBA", district: "မြောက်ဦး", township: "မင်းပြား" },
+                { code: "PKW", district: "စစ်တွေ", township: "ပေါက်တော" },
+                { code: "MPN", district: "မြောက်ဦး", township: "မြေပုံ" },
+                { code: "MDW", district: "မောင်တော", township: "မောင်တော" },
+                { code: "TPL", district: "မောင်တော", township: "တောင်ပြိုလက်ဝဲ" },
+                { code: "BTG", district: "မောင်တော", township: "ဘူးသီးတောင်" },
+                { code: "KPU", district: "ကျောက်ဖြူ", township: "ကျောက်ဖြူ" },
+                { code: "RRE", district: "ကျောက်ဖြူ", township: "ရမ်းဗြဲ" },
+                { code: "MOG", district: "ကျောက်ဖြူ", township: "မာန်အောင်" },
+                { code: "ANN", district: "ကျောက်ဖြူ", township: "အမ်း" },
+                { code: "SDY", district: "သံတွဲ", township: "သံတွဲ" },
+                { code: "TGK", district: "သံတွဲ", township: "တောင်ကုတ်" },
+                { code: "MEE", district: "သံတွဲ", township: "မအီ" },
+                { code: "GWA", district: "သံတွဲ", township: "ဂွ" },
+                { code: "KTL", district: "သံတွဲ", township: "ကျိန္တလီ" }
+            ],
+            "12/": [
+                { code: "TGKN", district: "ရန်ကုန်(အရှေ့ပိုင်း)", township: "သင်္ဃန်းကျွန်း" },
+                { code: "YKN", district: "ရန်ကုန်(အရှေ့ပိုင်း)", township: "ရန်ကင်း" },
+                { code: "NOKA", district: "ရန်ကုန်(အရှေ့ပိုင်း)", township: "မြောက်ဥက္ကလာ" },
+                { code: "SOKA", district: "ရန်ကုန်(အရှေ့ပိုင်း)", township: "တောင်ဥက္ကလာ" },
+                { code: "DBN", district: "ရန်ကုန်(အရှေ့ပိုင်း)", township: "ဒေါပုံ" },
+                { code: "TME", district: "ရန်ကုန်(အရှေ့ပိုင်း)", township: "တာမွေ" },
+                { code: "PZDG", district: "ရန်ကုန်(အရှေ့ပိုင်း)", township: "ပုဇွန်တောင်" },
+                { code: "BTHG", district: "ရန်ကုန်(အရှေ့ပိုင်း)", township: "ဗိုလ်တထောင်" },
+                { code: "MTNT", district: "ရန်ကုန်(အရှေ့ပိုင်း)", township: "မင်္ဂလာတောင်ညွှန့်" },
+                { code: "KTDA", district: "ရန်ကုန်(အနောက်ပိုင်း)", township: "ကျောက်တံတား" },
+                { code: "PBDN", district: "ရန်ကုန်(အနောက်ပိုင်း)", township: "ပန်းဘဲတန်း" },
+                { code: "LMDW", district: "ရန်ကုန်(အနောက်ပိုင်း)", township: "လမ်းမတော်" },
+                { code: "LTA", district: "ရန်ကုန်(အနောက်ပိုင်း)", township: "လသာ" },
+                { code: "ALE", district: "ရန်ကုန်(အနောက်ပိုင်း)", township: "အလုံ" },
+                { code: "KMDE", district: "ရန်ကုန်(အနောက်ပိုင်း)", township: "ကြည့်မြင်တိုင်" },
+                { code: "SCG", district: "ရန်ကုန်(အနောက်ပိုင်း)", township: "စမ်းချောင်း" },
+                { code: "HLG", district: "ရန်ကုန်(အနောက်ပိုင်း)", township: "လှိုင်" },
+                { code: "KMYT", district: "ရန်ကုန်(အနောက်ပိုင်း)", township: "ကမာရွတ်" },
+                { code: "MYGN", district: "ရန်ကုန်(အနောက်ပိုင်း)", township: "မရမ်းကုန်း" },
+                { code: "BHN", district: "ရန်ကုန်(တောင်ပိုင်း)", township: "ဗဟန်း" },
+                { code: "SRM", district: "ရန်ကုန်(တောင်ပိုင်း)", township: "သံလျှင်" },
+                { code: "KTN", district: "ရန်ကုန်(တောင်ပိုင်း)", township: "ကျောက်တန်း" },
+                { code: "TGA", district: "ရန်ကုန်(တောင်ပိုင်း)", township: "သုံးခွ" },
+                { code: "KYN", district: "ရန်ကုန်(တောင်ပိုင်း)", township: "ခရမ်း" },
+                { code: "TTE", district: "ရန်ကုန်(တောင်ပိုင်း)", township: "တွံတေး" },
+                { code: "KHU", district: "ရန်ကုန်(တောင်ပိုင်း)", township: "ကော့မှူး" },
+                { code: "KCGN", district: "ရန်ကုန်(တောင်ပိုင်း)", township: "ကွမ်းခြံကုန်း" },
+                { code: "DLA", district: "ရန်ကုန်(တောင်ပိုင်း)", township: "ဒလ" },
+                { code: "ISN", district: "ရန်ကုန်(မြောက်ပိုင်း)", township: "အင်းစိန်" },
+                { code: "MGDN", district: "ရန်ကုန်(မြောက်ပိုင်း)", township: "မင်္ဂလာဒုံ" },
+                { code: "MBN", district: "ရန်ကုန်(မြောက်ပိုင်း)", township: "မှော်ဘီ" },
+                { code: "HGU", district: "ရန်ကုန်(မြောက်ပိုင်း)", township: "လှည်းကူး" },
+                { code: "TXI", district: "ရန်ကုန်(မြောက်ပိုင်း)", township: "တိုက်ကြီး" },
+                { code: "TBN", district: "ရန်ကုန်(မြောက်ပိုင်း)", township: "ထန်းတပင်း" },
+                { code: "SPTA", district: "ရန်ကုန်(မြောက်ပိုင်း)", township: "ရွှေပြည်သာ" },
+                { code: "HTYA", district: "ရန်ကုန်(မြောက်ပိုင်း)", township: "လှိုင်သာယာ" }
+            ],
+            "13/": [
+                { code: "TGI", district: "တောင်ကြီး", township: "တောင်ကြီး" },
+                { code: "HPE", district: "တောင်ကြီး", township: "ဟိုပုံး" },
+                { code: "YHE", district: "တောင်ကြီး", township: "ညောင်ရွှေ" },
+                { code: "SSS", district: "တောင်ကြီး", township: "ဆီဆိုင်" },
+                { code: "KLW", district: "တောင်ကြီး", township: "ကလော" },
+                { code: "PTA", district: "တောင်ကြီး", township: "ပင်းတယ" },
+                { code: "YNN", district: "တောင်ကြီး", township: "ရွာငံ" },
+                { code: "LSK", district: "တောင်ကြီး", township: "ရပ်စောက်" },
+                { code: "PLG", district: "တောင်ကြီး", township: "ပင်လောင်း" },
+                { code: "PKN", district: "တောင်ကြီး", township: "ဖယ်ခုံ" },
+                { code: "LLM", district: "လွိုင်လင်", township: "လွိုင်လင်" },
+                { code: "PLN", district: "လွိုင်လင်", township: "ပင်လုံ" },
+                { code: "LHA", district: "လွိုင်လင်", township: "လဲချား" },
+                { code: "NSG", district: "လွိုင်လင်", township: "နမ့်စန်" },
+                { code: "KHG", district: "လွိုင်လင်", township: "ကွန်းဟိန်း" },
+                { code: "KSI", district: "လွိုင်လင်", township: "ကျေးသီး" },
+                { code: "MKG", district: "လွိုင်လင်", township: "မိုင်းကိုင်" },
+                { code: "MSU", district: "လွိုင်လင်", township: "မိုင်းရှုး" },
+                { code: "LKO", district: "လင်းခေး", township: "လင်းခေး" },
+                { code: "MMI", district: "လင်းခေး", township: "မောက်မယ်" },
+                { code: "MOPN", district: "လင်းခေး", township: "မိုင်းပန်" },
+                { code: "LSO", district: "လားရှိုး", township: "လားရှိုး" },
+                { code: "HWI", district: "လားရှိုး", township: "သိန္နီ" },
+                { code: "TYN", district: "လားရှိုး", township: "တန့်ယန်း" },
+                { code: "MYI", district: "လားရှိုး", township: "မိုင်းရယ်" },
+                { code: "MSE", district: "မူဆယ်", township: "မူဆယ်" },
+                { code: "NKM", district: "မူဆယ်", township: "နမ့်ခမ်း" },
+                { code: "KKI", district: "ကျောက်မဲ", township: "ကွတ်ခိုင်" },
+                { code: "KME", district: "ကျောက်မဲ", township: "ကျောက်မဲ" },
+                { code: "HPW", district: "ကျောက်မဲ", township: "သီပေါ" },
+                { code: "NKO", district: "ကျောက်မဲ", township: "နောင်ချို" },
+                { code: "KTG", district: "ကျိုင်းတုံ", township: "ကျိုင်းတုံ" },
+                { code: "MGL", district: "ကျိုင်းတုံ", township: "မိုင်းလား" },
+                { code: "TCK", district: "တာချီလိတ်", township: "တာချီလိတ်" }
+            ],
+            "14/": [
+                { code: "BSNW", district: "ပုသိမ်", township: "ပုသိမ်အနောက်" },
+                { code: "BSNE", district: "ပုသိမ်", township: "ပုသိမ်အရှေ့" },
+                { code: "KYT", district: "ပုသိမ်", township: "ကန်ကြီးတောင့်" },
+                { code: "NPW", district: "ပုသိမ်", township: "ငပုတော" },
+                { code: "TPG", district: "ပုသိမ်", township: "သာပေါင်း" },
+                { code: "KGE", district: "ပုသိမ်", township: "ကျောင်းကုန်း" },
+                { code: "YKI", district: "ပုသိမ်", township: "ရေကြည်" },
+                { code: "KPW", district: "ပုသိမ်", township: "ကျုံပျော်" },
+                { code: "HZA", district: "ဟင်္သာတ", township: "ဟင်္သာတ" },
+                { code: "ZLN", district: "ဟင်္သာတ", township: "ဇလွန်" },
+                { code: "LMA", district: "ဟင်္သာတ", township: "လေးမျက်နှာ" },
+                { code: "IGU", district: "ဟင်္သာတ", township: "အင်္ဂပူ" },
+                { code: "MAG", district: "ဟင်္သာတ", township: "မြန်အောင်" },
+                { code: "KNK", district: "ဟင်္သာတ", township: "ကြံခင်း" },
+                { code: "MUN", district: "မအူပင်", township: "မအူပင်" },
+                { code: "PTNW", district: "မအူပင်", township: "ပန်းတနော်" },
+                { code: "YDN", district: "မအူပင်", township: "ညောင်တုန်း" },
+                { code: "DNU", district: "မအူပင်", township: "ဓနုဖြူ" },
+                { code: "PPN", district: "ဖျာပုံ", township: "ဖျာပုံ" },
+                { code: "BGLE", district: "ဖျာပုံ", township: "ဘိုကလေး" },
+                { code: "KLT", district: "ဖျာပုံ", township: "ကျိုတ်လတ်" },
+                { code: "DDE", district: "ဖျာပုံ", township: "ဒေးဒရဲ" },
+                { code: "LPA", district: "လပွတ္တာ", township: "လပွတ္တာ" },
+                { code: "MYA", district: "မြောင်းမြ", township: "မြောင်းမြ" },
+                { code: "EME", district: "မြောင်းမြ", township: "အိမ်မဲ" }
+            ]
+        };
+
+        const stateSelect   = document.getElementById('nrc_state');
+        const townshipInput = document.getElementById('nrc_township');
+        const townshipList  = document.getElementById('township-list');
+        const typeSelect    = document.getElementById('nrc_type');
+        const numberInput   = document.getElementById('nrc_number');
+
+        const badgePreview  = document.getElementById('nrc_preview_badge');
+        const infoCard      = document.getElementById('infoCard');
+        const resState      = document.getElementById('resState');
+        const resDistrict   = document.getElementById('resDistrict');
+        const resTownship   = document.getElementById('resTownship');
+        const resFull       = document.getElementById('resFull');
+
+        // Populate datalist options when state is changed
+        stateSelect.addEventListener('change', function() {
+            const selectedState = this.value;
+            townshipList.innerHTML = '';
+            townshipInput.value = '';
+
+            if (nrcTownshipsData[selectedState]) {
+                nrcTownshipsData[selectedState].forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.code;
+                    opt.label = `${item.code} (${item.district} - ${item.township})`;
+                    townshipList.appendChild(opt);
+                });
+            }
+            updateValidationPreview();
+        });
+
+        townshipInput.addEventListener('input', function() {
+            this.value = this.value.toUpperCase();
+            updateValidationPreview();
+        });
+
+        typeSelect.addEventListener('change', updateValidationPreview);
+        numberInput.addEventListener('input', function() {
+            this.value = this.value.replace(/\D/g, '');
+            updateValidationPreview();
+        });
+
+        function updateValidationPreview() {
+            const state = stateSelect.value;
+            const tCode = townshipInput.value.trim().toUpperCase();
+            const type  = typeSelect.value;
+            const num   = numberInput.value.trim();
+
+            let stateMM = stateNamesMM[state] || '';
+            let districtMM = '';
+            let townshipMM = '';
+
+            if (state && nrcTownshipsData[state]) {
+                const found = nrcTownshipsData[state].find(item => item.code === tCode);
+                if (found) {
+                    districtMM = found.district;
+                    townshipMM = found.township;
+                }
+            }
+
+            if (stateMM || townshipMM) {
+                let parts = [];
+                if (stateMM) parts.push(stateMM);
+                if (districtMM) parts.push(districtMM);
+                if (townshipMM) parts.push(townshipMM);
+
+                badgePreview.textContent = parts.join(' - ');
+                badgePreview.style.display = 'inline-block';
+
+                resState.textContent = stateMM || '-';
+                resDistrict.textContent = districtMM || 'Custom / Unmatched';
+                resTownship.textContent = townshipMM || tCode || '-';
+                resFull.textContent = `${state} ${tCode} ${type} ${num}`;
+                infoCard.style.display = 'block';
+            } else {
+                badgePreview.style.display = 'none';
+                badgePreview.textContent = '';
+                infoCard.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
